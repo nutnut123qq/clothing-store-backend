@@ -1,0 +1,26 @@
+# Fly.io configuration
+app = "clothing-store-api"
+primary_region = "sea"
+
+[build]
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"
+  ASPNETCORE_URLS = "http://0.0.0.0:8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
+
+[[statics]]
+  guest_path = "/app/wwwroot"
+  url_prefix = "/"
