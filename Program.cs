@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ClothingStore.API.Data;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,7 +23,7 @@ builder.Services.AddHsts(options =>
 
 // Add Entity Framework
 builder.Services.AddDbContext<ClothingStoreContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add CORS
 builder.Services.AddCors(options =>
