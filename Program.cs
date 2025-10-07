@@ -25,15 +25,34 @@ builder.Services.AddHsts(options =>
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") 
     ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-// Handle Render PostgreSQL URL format (postgres://...) and convert to Npgsql format
-if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("postgres://"))
-{
-    var uri = new Uri(connectionString);
-    var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
-}
+Console.WriteLine($"[Startup] Environment: {builder.Environment.EnvironmentName}");
+Console.WriteLine($"[Startup] DATABASE_URL exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DATABASE_URL"))}");
 
-if (string.IsNullOrEmpty(connectionString))
+// Handle Render PostgreSQL URL format (postgres://...) and convert to Npgsql format
+if (!string.IsNullOrEmpty(connectionString))
+{
+    if (connectionString.StartsWith("postgres://") || connectionString.StartsWith("postgresql://"))
+    {
+        try
+        {
+            var uri = new Uri(connectionString);
+            var userInfo = uri.UserInfo.Split(':');
+            connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+            Console.WriteLine($"[Startup] Converted postgres:// URL to Npgsql format");
+            Console.WriteLine($"[Startup] Host: {uri.Host}, Port: {uri.Port}, Database: {uri.AbsolutePath.TrimStart('/')}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Startup ERROR] Failed to parse DATABASE_URL: {ex.Message}");
+            throw new InvalidOperationException("Invalid DATABASE_URL format. Expected postgres://username:password@host:port/database", ex);
+        }
+    }
+    else
+    {
+        Console.WriteLine($"[Startup] Using Npgsql connection string format");
+    }
+}
+else
 {
     throw new InvalidOperationException("Database connection string is not configured. Please set DATABASE_URL environment variable or DefaultConnection in appsettings.json");
 }
