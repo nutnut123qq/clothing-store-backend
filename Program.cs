@@ -30,7 +30,11 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-            ?? new[] { "http://localhost:3000", "https://localhost:3000" };
+            ?? new[] { 
+                "http://localhost:3000", 
+                "https://localhost:3000",
+                "https://clothing-store-frontend-six.vercel.app"
+            };
         
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
