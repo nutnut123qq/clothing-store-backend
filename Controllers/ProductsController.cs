@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ClothingStore.API.Data;
 using ClothingStore.API.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ClothingStore.API.Controllers
 {
@@ -76,9 +77,10 @@ namespace ClothingStore.API.Controllers
             return Ok(productDto);
         }
 
-        // POST: api/products
-        [HttpPost]
-        public async Task<ActionResult<ProductDto>> PostProduct(CreateProductDto createProductDto)
+    // POST: api/products
+    [HttpPost]
+    [Authorize]
+    public async Task<ActionResult<ProductDto>> PostProduct(CreateProductDto createProductDto)
         {
             if (!ModelState.IsValid)
             {
@@ -112,9 +114,10 @@ namespace ClothingStore.API.Controllers
             return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, productDto);
         }
 
-        // PUT: api/products/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutProduct(int id, UpdateProductDto updateProductDto)
+    // PUT: api/products/5
+    [HttpPut("{id}")]
+    [Authorize]
+    public async Task<IActionResult> PutProduct(int id, UpdateProductDto updateProductDto)
         {
             if (!ModelState.IsValid)
             {
@@ -152,9 +155,10 @@ namespace ClothingStore.API.Controllers
             return NoContent();
         }
 
-        // DELETE: api/products/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteProduct(int id)
+    // DELETE: api/products/5
+    [HttpDelete("{id}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteProduct(int id)
         {
             var product = await _context.Products.FindAsync(id);
             if (product == null)

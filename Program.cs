@@ -1,6 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using ClothingStore.API.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using ClothingStore.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +12,34 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Register JwtService
+builder.Services.AddSingleton<JwtService>();
+
+// Configure Authentication (JWT)
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? builder.Configuration.GetValue<string>("Jwt:Secret");
+if (!string.IsNullOrEmpty(jwtSecret))
+{
+    var key = Encoding.UTF8.GetBytes(jwtSecret);
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+}
 
 // Add Health Checks
 builder.Services.AddHealthChecks()
@@ -143,6 +175,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Map Health Check endpoint
@@ -150,6 +183,23 @@ app.MapHealthChecks("/health");
 
 app.MapControllers();
 
-// Database is managed by migrations
+// Auto-run migrations on startup (for production deployment)
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ClothingStoreContext>();
+        Console.WriteLine("[Migration] Applying pending migrations...");
+        context.Database.Migrate();
+        Console.WriteLine("[Migration] ✓ Migrations applied successfully!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Migration ERROR] ✗ Failed to apply migrations: {ex.Message}");
+        // Don't throw - allow app to start even if migration fails
+        // You can change this behavior if you want app to fail on migration error
+    }
+}
 
 app.Run();
