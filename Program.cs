@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Linq;
 using ClothingStore.API.Services;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -282,14 +283,33 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<ClothingStoreContext>();
         Console.WriteLine("[Migration] Applying pending migrations...");
+
+        // Connectivity probe: try opening a plain NpgsqlConnection to capture detailed errors
+        try
+        {
+            using var probe = new NpgsqlConnection(connectionString);
+            probe.Open();
+            Console.WriteLine("[Migration] ✓ Connectivity probe succeeded (able to open a DB connection)");
+            probe.Close();
+        }
+        catch (Exception connEx)
+        {
+            Console.WriteLine("[Migration ERROR] ✗ Connectivity probe failed before running migrations:");
+            Console.WriteLine(connEx.ToString());
+            // Re-throw to avoid running migrations when connectivity fails
+            throw;
+        }
+
         context.Database.Migrate();
         Console.WriteLine("[Migration] ✓ Migrations applied successfully!");
     }
     catch (Exception ex)
     {
+        // Log full details including inner exceptions for easier debugging on the deployment logs
         Console.WriteLine($"[Migration ERROR] ✗ Failed to apply migrations: {ex.Message}");
+        if (ex.InnerException != null) Console.WriteLine($"[Migration ERROR] InnerException: {ex.InnerException}");
+        Console.WriteLine(ex.ToString());
         // Don't throw - allow app to start even if migration fails
-        // You can change this behavior if you want app to fail on migration error
     }
 }
 
