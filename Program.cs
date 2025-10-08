@@ -4,6 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Linq;
 using ClothingStore.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -71,13 +72,48 @@ string SanitizeConnectionString(string conn)
             .Where(a => a.Length == 2)
             .ToDictionary(a => a[0].Trim(), a => a[1].Trim(), StringComparer.OrdinalIgnoreCase);
 
-        // If Max Pool Size exists but is not a valid integer, remove it
-        if (dict.TryGetValue("Max Pool Size", out var maxPoolVal))
+        // Always remove any pool-related keys (max pool size, max_pool_size, max-pool-size, etc.)
+        string NormalizeKey(string k)
         {
-            if (!int.TryParse(maxPoolVal, out _))
+            if (k == null) return string.Empty;
+            // URL-decode common encodings and remove non-alphanumeric characters
+            var decoded = Uri.UnescapeDataString(k).Replace("+", "");
+            return new string(decoded.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+        }
+
+        var removedKeys = new List<string>();
+        foreach (var kv in dict.ToList())
+        {
+            var rawKey = kv.Key;
+            var normalized = NormalizeKey(rawKey);
+
+            // If key name looks like any variant of max pool size or pool size, remove it
+            if (normalized.Contains("max") && normalized.Contains("pool") || normalized.Contains("poolsize") || normalized.Contains("maxpoolsize"))
             {
-                dict.Remove("Max Pool Size");
+                dict.Remove(rawKey);
+                removedKeys.Add(rawKey);
+                continue;
             }
+
+            // If value should be numeric (common for pool sizes/ports) but contains non-digits, remove the key to be safe
+            var val = kv.Value?.Trim().Trim('"', '\'') ?? string.Empty;
+            if (!string.IsNullOrEmpty(val) && val.Any(c => !char.IsDigit(c)))
+            {
+                // don't remove common textual values like Host, Database, Username, Password
+                var textualKeys = new[] { "host", "database", "username", "password", "sslmode", "trustservercertificate" };
+                if (!textualKeys.Contains(normalized))
+                {
+                    dict.Remove(rawKey);
+                    removedKeys.Add(rawKey);
+                }
+            }
+        }
+
+        if (removedKeys.Count > 0)
+        {
+            // Log removed keys but mask values
+            var masked = removedKeys.Select(k => k + "=<removed>").ToArray();
+            Console.WriteLine($"[Startup] ✱ Removed problematic connection-string keys: {string.Join(',', masked)}");
         }
 
         // Rebuild connection string preserving original key order as much as possible
