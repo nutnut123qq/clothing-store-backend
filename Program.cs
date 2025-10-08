@@ -57,6 +57,52 @@ builder.Services.AddHsts(options =>
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") 
     ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
+// Helper: sanitize Npgsql-style connection string by removing invalid values
+string SanitizeConnectionString(string conn)
+{
+    if (string.IsNullOrEmpty(conn)) return conn;
+
+    try
+    {
+        // Split by semicolon into key=value segments
+        var parts = conn.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        var dict = parts
+            .Select(p => p.Split('=', 2))
+            .Where(a => a.Length == 2)
+            .ToDictionary(a => a[0].Trim(), a => a[1].Trim(), StringComparer.OrdinalIgnoreCase);
+
+        // If Max Pool Size exists but is not a valid integer, remove it
+        if (dict.TryGetValue("Max Pool Size", out var maxPoolVal))
+        {
+            if (!int.TryParse(maxPoolVal, out _))
+            {
+                dict.Remove("Max Pool Size");
+            }
+        }
+
+        // Rebuild connection string preserving original key order as much as possible
+        var rebuilt = parts
+            .Select(p => p.Split('=', 2))
+            .Where(a => a.Length == 2)
+            .Select(a => a[0].Trim())
+            .Where(k => dict.ContainsKey(k))
+            .Select(k => $"{k}={dict[k]}")
+            .ToList();
+
+        // Append any remaining keys that weren't in the original order
+        var remaining = dict.Keys.Except(rebuilt.Select(s => s.Split('=', 2)[0]), StringComparer.OrdinalIgnoreCase);
+        foreach (var k in remaining)
+            rebuilt.Add($"{k}={dict[k]}");
+
+        return string.Join(';', rebuilt) + (rebuilt.Count > 0 ? ";" : string.Empty);
+    }
+    catch
+    {
+        // If anything goes wrong, fall back to original string
+        return conn;
+    }
+}
+
 Console.WriteLine($"[Startup] Environment: {builder.Environment.EnvironmentName}");
 Console.WriteLine($"[Startup] DATABASE_URL exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DATABASE_URL"))}");
 
@@ -67,6 +113,15 @@ if (!string.IsNullOrEmpty(connectionString))
         ? connectionString.Substring(0, 30) + "..." 
         : connectionString;
     Console.WriteLine($"[Startup] Connection string preview: {debugConnStr}");
+
+    // Sanitize connection string to avoid invalid parameters (e.g., malformed Max Pool Size)
+    var sanitizedConnectionString = SanitizeConnectionString(connectionString);
+    if (sanitizedConnectionString != connectionString)
+    {
+        Console.WriteLine("[Startup] ✱ DATABASE_URL was sanitized to remove invalid parameters (e.g. Max Pool Size)");
+        Console.WriteLine($"[Startup] Sanitized connection preview: {(sanitizedConnectionString.Length > 50 ? sanitizedConnectionString.Substring(0, 30) + "..." : sanitizedConnectionString)}");
+        connectionString = sanitizedConnectionString;
+    }
 }
 
 // Handle Render PostgreSQL URL format (postgres://...) and convert to Npgsql format
