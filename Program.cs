@@ -219,24 +219,31 @@ else
 }
 
 builder.Services.AddDbContext<ClothingStoreContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.CommandTimeout(120); // 2 minutes timeout
+    }));
 
 // Add CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-            ?? new[] { 
-                "http://localhost:3000", 
-                "https://localhost:3000",
-                "https://clothing-store-frontend-six.vercel.app"
-            };
-        
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .WithExposedHeaders("*");
+        if (builder.Environment.IsDevelopment())
+        {
+            // Development - allow localhost
+            policy.WithOrigins("http://localhost:3000", "https://localhost:3000")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
+        {
+            // Production - allow all origins for now to fix CORS issue
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
     });
 });
 
