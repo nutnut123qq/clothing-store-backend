@@ -45,9 +45,9 @@ namespace ClothingStore.API.Controllers
                 })
                 .ToListAsync();
 
-            Response.Headers.Add("X-Total-Count", totalCount.ToString());
-            Response.Headers.Add("X-Page", page.ToString());
-            Response.Headers.Add("X-Page-Size", pageSize.ToString());
+            Response.Headers["X-Total-Count"] = totalCount.ToString();
+            Response.Headers["X-Page"] = page.ToString();
+            Response.Headers["X-Page-Size"] = pageSize.ToString();
 
             return Ok(products);
         }

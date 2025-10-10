@@ -262,6 +262,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// IMPORTANT: CORS must be the first middleware
+app.UseCors("AllowFrontend");
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -274,8 +277,6 @@ if (app.Environment.IsDevelopment())
 // {
 //     app.UseHttpsRedirection();
 // }
-
-app.UseCors("AllowFrontend");
 
 // Add Security Headers
 app.Use(async (context, next) =>
