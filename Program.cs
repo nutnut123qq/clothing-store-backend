@@ -249,6 +249,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Configure port binding for Render deployment
+var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+app.Urls.Add($"http://0.0.0.0:{port}");
+Console.WriteLine($"[Startup] Binding to port: {port}");
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
