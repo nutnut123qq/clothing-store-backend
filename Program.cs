@@ -295,32 +295,37 @@ app.MapHealthChecks("/health");
 
 app.MapControllers();
 
-// Auto-run migrations on startup (for production deployment)
-using (var scope = app.Services.CreateScope())
+// Start the app first, then run migrations in background
+var runTask = app.RunAsync();
+
+// Run migrations in background task - don't block app startup
+_ = Task.Run(async () =>
 {
+    await Task.Delay(2000); // Wait 2 seconds for app to start
+    
+    using var scope = app.Services.CreateScope();
     var services = scope.ServiceProvider;
     try
     {
         var context = services.GetRequiredService<ClothingStoreContext>();
-        Console.WriteLine("[Migration] Applying pending migrations...");
+        Console.WriteLine("[Migration] Applying pending migrations (background task)...");
 
         // Connectivity probe: try opening a plain NpgsqlConnection to capture detailed errors
         try
         {
             using var probe = new NpgsqlConnection(connectionString);
-            probe.Open();
+            await probe.OpenAsync();
             Console.WriteLine("[Migration] ✓ Connectivity probe succeeded (able to open a DB connection)");
-            probe.Close();
+            await probe.CloseAsync();
         }
         catch (Exception connEx)
         {
             Console.WriteLine("[Migration ERROR] ✗ Connectivity probe failed before running migrations:");
             Console.WriteLine(connEx.ToString());
-            // Re-throw to avoid running migrations when connectivity fails
-            throw;
+            return; // Don't run migrations if connectivity fails
         }
 
-        context.Database.Migrate();
+        await context.Database.MigrateAsync();
         Console.WriteLine("[Migration] ✓ Migrations applied successfully!");
     }
     catch (Exception ex)
@@ -329,8 +334,8 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine($"[Migration ERROR] ✗ Failed to apply migrations: {ex.Message}");
         if (ex.InnerException != null) Console.WriteLine($"[Migration ERROR] InnerException: {ex.InnerException}");
         Console.WriteLine(ex.ToString());
-        // Don't throw - allow app to start even if migration fails
+        // Don't throw - allow app to continue running even if migration fails
     }
-}
+});
 
-app.Run();
+await runTask;
