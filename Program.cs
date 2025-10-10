@@ -10,6 +10,14 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Kestrel to bind to PORT environment variable for Render
+var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(int.Parse(port));
+});
+Console.WriteLine($"[Startup] Configuring Kestrel to listen on port: {port}");
+
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -248,11 +256,6 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-
-// Configure port binding for Render deployment
-var webPort = Environment.GetEnvironmentVariable("PORT") ?? "10000";
-app.Urls.Add($"http://0.0.0.0:{webPort}");
-Console.WriteLine($"[Startup] Binding to port: {webPort}");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
