@@ -203,7 +203,7 @@ if (!string.IsNullOrEmpty(connectionString))
             var username = Uri.UnescapeDataString(userInfo[0]);
             var password = Uri.UnescapeDataString(userInfo[1]);
             
-            connectionString = $"Host={uri.Host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+            connectionString = $"Host={uri.Host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Timeout=300;Command Timeout=300;Keepalive=30;ConnectionIdleLifetime=300";
             Console.WriteLine($"[Startup] ✓ Converted postgres:// URL to Npgsql format");
             Console.WriteLine($"[Startup] ✓ Host: {uri.Host}, Port: {dbPort}, Database: {database}, Username: {username}");
         }
@@ -229,7 +229,12 @@ else
 builder.Services.AddDbContext<ClothingStoreContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions =>
     {
-        npgsqlOptions.CommandTimeout(120); // 2 minutes timeout
+        npgsqlOptions.CommandTimeout(300); // 5 minutes timeout for slow Supabase pooler
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorCodesToAdd: null
+        );
     }));
 
 // Add CORS
@@ -264,11 +269,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Configure HTTPS redirection based on environment
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHttpsRedirection();
-}
+// Don't use HTTPS redirection on Render - it's handled by their proxy
+// if (!app.Environment.IsDevelopment())
+// {
+//     app.UseHttpsRedirection();
+// }
 
 app.UseCors("AllowFrontend");
 
