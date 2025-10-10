@@ -191,7 +191,7 @@ if (!string.IsNullOrEmpty(connectionString))
             }
             
             // Default port to 5432 if not specified
-            var port = uri.Port > 0 ? uri.Port : 5432;
+            var dbPort = uri.Port > 0 ? uri.Port : 5432;
             var database = uri.AbsolutePath.TrimStart('/');
             
             if (string.IsNullOrEmpty(database))
@@ -203,9 +203,9 @@ if (!string.IsNullOrEmpty(connectionString))
             var username = Uri.UnescapeDataString(userInfo[0]);
             var password = Uri.UnescapeDataString(userInfo[1]);
             
-            connectionString = $"Host={uri.Host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+            connectionString = $"Host={uri.Host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
             Console.WriteLine($"[Startup] ✓ Converted postgres:// URL to Npgsql format");
-            Console.WriteLine($"[Startup] ✓ Host: {uri.Host}, Port: {port}, Database: {database}, Username: {username}");
+            Console.WriteLine($"[Startup] ✓ Host: {uri.Host}, Port: {dbPort}, Database: {database}, Username: {username}");
         }
         catch (Exception ex)
         {
