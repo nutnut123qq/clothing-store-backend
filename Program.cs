@@ -255,7 +255,8 @@ builder.Services.AddCors(options =>
             // Production - allow all origins for now to fix CORS issue
             policy.AllowAnyOrigin()
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .WithExposedHeaders("X-Total-Count", "X-Page", "X-Page-Size");
         }
     });
 });
