@@ -158,15 +158,6 @@ if (!string.IsNullOrEmpty(connectionString))
         ? connectionString.Substring(0, 30) + "..." 
         : connectionString;
     Console.WriteLine($"[Startup] Connection string preview: {debugConnStr}");
-
-    // Sanitize connection string to avoid invalid parameters (e.g., malformed Max Pool Size)
-    var sanitizedConnectionString = SanitizeConnectionString(connectionString);
-    if (sanitizedConnectionString != connectionString)
-    {
-        Console.WriteLine("[Startup] ✱ DATABASE_URL was sanitized to remove invalid parameters (e.g. Max Pool Size)");
-        Console.WriteLine($"[Startup] Sanitized connection preview: {(sanitizedConnectionString.Length > 50 ? sanitizedConnectionString.Substring(0, 30) + "..." : sanitizedConnectionString)}");
-        connectionString = sanitizedConnectionString;
-    }
 }
 
 // Handle Render PostgreSQL URL format (postgres://...) and convert to Npgsql format
@@ -218,6 +209,14 @@ if (!string.IsNullOrEmpty(connectionString))
     else
     {
         Console.WriteLine($"[Startup] Using direct Npgsql connection string format");
+        
+        // Only sanitize if it's already in Npgsql format (not postgres:// URL)
+        var sanitizedConnectionString = SanitizeConnectionString(connectionString);
+        if (sanitizedConnectionString != connectionString)
+        {
+            Console.WriteLine("[Startup] ✱ DATABASE_URL was sanitized to remove invalid parameters (e.g. Max Pool Size)");
+            connectionString = sanitizedConnectionString;
+        }
     }
 }
 else
