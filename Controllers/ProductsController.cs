@@ -37,23 +37,30 @@ namespace ClothingStore.API.Controllers
                 Console.WriteLine($"[GetProducts] Total count: {totalCount}");
 
                 Console.WriteLine("[GetProducts] Fetching products...");
-                var products = await query
+                
+                // Use AsNoTracking for better performance and fetch entities directly
+                var productEntities = await query
+                    .AsNoTracking()
                     .OrderBy(p => p.Name)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
-                    .Select(p => new ProductDto
-                    {
-                        Id = p.Id,
-                        Name = p.Name,
-                        Description = p.Description,
-                        Price = p.Price,
-                        ImageUrl = p.ImageUrl,
-                        CreatedAt = p.CreatedAt,
-                        UpdatedAt = p.UpdatedAt
-                    })
                     .ToListAsync();
 
-                Console.WriteLine($"[GetProducts] Found {products.Count} products");
+                Console.WriteLine($"[GetProducts] Found {productEntities.Count} product entities");
+
+                // Map to DTOs in memory
+                var products = productEntities.Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Price = p.Price,
+                    ImageUrl = p.ImageUrl,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                }).ToList();
+
+                Console.WriteLine($"[GetProducts] Mapped to {products.Count} DTOs");
 
                 Response.Headers["X-Total-Count"] = totalCount.ToString();
                 Response.Headers["X-Page"] = page.ToString();
