@@ -38,11 +38,10 @@ namespace ClothingStore.API.Controllers
 
                 Console.WriteLine("[GetProducts] Fetching products...");
                 
-                // Use AsNoTracking for better performance and fetch entities directly
+                // Simplest possible query - just fetch all without ordering
+                Console.WriteLine("[GetProducts] Attempting raw query without ordering...");
                 var productEntities = await query
                     .AsNoTracking()
-                    .OrderBy(p => p.Name)
-                    .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
 

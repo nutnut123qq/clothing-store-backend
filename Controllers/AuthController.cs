@@ -24,49 +24,82 @@ namespace ClothingStore.API.Controllers
         [HttpPost("register")]
         public async Task<ActionResult<AuthResponseDto>> Register(RegisterDto dto)
         {
-            if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Password))
+            try
             {
-                return BadRequest("Email and password are required");
-            }
+                Console.WriteLine($"[Register] Starting registration for email: {dto.Email}");
+                
+                if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Password))
+                {
+                    return BadRequest("Email and password are required");
+                }
 
-            var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-            if (existing != null)
+                var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+                if (existing != null)
+                {
+                    Console.WriteLine($"[Register] Email already exists: {dto.Email}");
+                    return Conflict("Email already registered");
+                }
+
+                Console.WriteLine("[Register] Creating new user...");
+                var user = new User { Email = dto.Email };
+                user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"[Register] User created with ID: {user.Id}");
+
+                Console.WriteLine("[Register] Generating token...");
+                var token = _jwtService.GenerateToken(user);
+                Console.WriteLine("[Register] Token generated successfully");
+
+                return Ok(new AuthResponseDto { Token = token, Email = user.Email });
+            }
+            catch (Exception ex)
             {
-                return Conflict("Email already registered");
+                Console.WriteLine($"[Register ERROR] {ex.Message}");
+                Console.WriteLine($"[Register ERROR] Stack trace: {ex.StackTrace}");
+                return StatusCode(500, new { error = "Registration failed", details = ex.Message });
             }
-
-            var user = new User { Email = dto.Email };
-            user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            var token = _jwtService.GenerateToken(user);
-
-            return Ok(new AuthResponseDto { Token = token, Email = user.Email });
         }
 
         [HttpPost("login")]
         public async Task<ActionResult<AuthResponseDto>> Login(LoginDto dto)
         {
-            if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Password))
+            try
             {
-                return BadRequest("Email and password are required");
-            }
+                Console.WriteLine($"[Login] Starting login for email: {dto.Email}");
+                
+                if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Password))
+                {
+                    return BadRequest("Email and password are required");
+                }
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-            if (user == null)
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+                if (user == null)
+                {
+                    Console.WriteLine($"[Login] User not found: {dto.Email}");
+                    return Unauthorized("Invalid credentials");
+                }
+
+                Console.WriteLine("[Login] Verifying password...");
+                var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
+                if (result == PasswordVerificationResult.Failed)
+                {
+                    Console.WriteLine("[Login] Password verification failed");
+                    return Unauthorized("Invalid credentials");
+                }
+
+                Console.WriteLine("[Login] Generating token...");
+                var token = _jwtService.GenerateToken(user);
+                Console.WriteLine("[Login] Login successful");
+                
+                return Ok(new AuthResponseDto { Token = token, Email = user.Email });
+            }
+            catch (Exception ex)
             {
-                return Unauthorized("Invalid credentials");
+                Console.WriteLine($"[Login ERROR] {ex.Message}");
+                Console.WriteLine($"[Login ERROR] Stack trace: {ex.StackTrace}");
+                return StatusCode(500, new { error = "Login failed", details = ex.Message });
             }
-
-            var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
-            if (result == PasswordVerificationResult.Failed)
-            {
-                return Unauthorized("Invalid credentials");
-            }
-
-            var token = _jwtService.GenerateToken(user);
-            return Ok(new AuthResponseDto { Token = token, Email = user.Email });
         }
     }
 }
