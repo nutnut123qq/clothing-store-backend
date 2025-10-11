@@ -32,6 +32,10 @@ Migrations/
 .env
 .env.local
 .env.production
+
+# Configuration files with sensitive data
+appsettings.json
+appsettings.Development.json
 appsettings.Production.json
 
 # Logs

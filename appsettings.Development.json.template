@@ -1,6 +1,11 @@
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=HOANG\\SQLEXPRESS;Database=prn222_assignment1;User Id=sa;Password=123456;MultipleActiveResultSets=true;TrustServerCertificate=True;Connection Timeout=180;Command Timeout=180"
+    "DefaultConnection": "Server=YOUR_SERVER;Database=YOUR_DATABASE;User Id=YOUR_USER;Password=YOUR_PASSWORD;MultipleActiveResultSets=true;TrustServerCertificate=True;Connection Timeout=180;Command Timeout=180"
+  },
+  "Jwt": {
+    "Secret": "YOUR_JWT_SECRET_KEY_AT_LEAST_32_CHARACTERS_LONG",
+    "Issuer": "clothingstore",
+    "Audience": "clothingstore"
   },
   "Logging": {
     "LogLevel": {
@@ -20,3 +25,4 @@
     "HstsMaxAge": 0
   }
 }
+
