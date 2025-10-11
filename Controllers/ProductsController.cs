@@ -21,35 +21,53 @@ namespace ClothingStore.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts([FromQuery] string? search = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            var query = _context.Products.AsQueryable();
-
-            if (!string.IsNullOrEmpty(search))
+            try
             {
-                query = query.Where(p => p.Name.Contains(search) || p.Description.Contains(search));
-            }
+                Console.WriteLine($"[GetProducts] Starting request - page: {page}, pageSize: {pageSize}, search: {search}");
+                
+                var query = _context.Products.AsQueryable();
 
-            var totalCount = await query.CountAsync();
-            var products = await query
-                .OrderBy(p => p.Name)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(p => new ProductDto
+                if (!string.IsNullOrEmpty(search))
                 {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    Price = p.Price,
-                    ImageUrl = p.ImageUrl,
-                    CreatedAt = p.CreatedAt,
-                    UpdatedAt = p.UpdatedAt
-                })
-                .ToListAsync();
+                    query = query.Where(p => p.Name.Contains(search) || p.Description.Contains(search));
+                }
 
-            Response.Headers["X-Total-Count"] = totalCount.ToString();
-            Response.Headers["X-Page"] = page.ToString();
-            Response.Headers["X-Page-Size"] = pageSize.ToString();
+                Console.WriteLine("[GetProducts] Executing CountAsync...");
+                var totalCount = await query.CountAsync();
+                Console.WriteLine($"[GetProducts] Total count: {totalCount}");
 
-            return Ok(products);
+                Console.WriteLine("[GetProducts] Fetching products...");
+                var products = await query
+                    .OrderBy(p => p.Name)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(p => new ProductDto
+                    {
+                        Id = p.Id,
+                        Name = p.Name,
+                        Description = p.Description,
+                        Price = p.Price,
+                        ImageUrl = p.ImageUrl,
+                        CreatedAt = p.CreatedAt,
+                        UpdatedAt = p.UpdatedAt
+                    })
+                    .ToListAsync();
+
+                Console.WriteLine($"[GetProducts] Found {products.Count} products");
+
+                Response.Headers["X-Total-Count"] = totalCount.ToString();
+                Response.Headers["X-Page"] = page.ToString();
+                Response.Headers["X-Page-Size"] = pageSize.ToString();
+
+                Console.WriteLine("[GetProducts] Returning response");
+                return Ok(products);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetProducts ERROR] {ex.Message}");
+                Console.WriteLine($"[GetProducts ERROR] Stack trace: {ex.StackTrace}");
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
         // GET: api/products/5
